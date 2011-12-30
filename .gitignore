@@ -1,0 +1,12 @@
+*.user
+*.opensdf
+*.sdf
+*.exe
+*.ilk
+*.pdb
+*.suo
+*.log
+ipch
+Debug
+Release
+GeneratedFiles
