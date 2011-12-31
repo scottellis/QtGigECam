@@ -42,3 +42,11 @@ bool WebCam::getNextFrame(MIL_ID buf_id)
 
 	return true;
 }
+
+// Always fixed using OpenCV interface to USB webcams
+QSize WebCam::getImageSize()
+{
+	QSize sz(640, 480);
+
+	return sz;
+}

@@ -22,6 +22,8 @@ public:
 
 	virtual bool getNextFrame(MIL_ID buf_id);
 
+	virtual QSize getImageSize();
+
 protected:
 	void run();
 

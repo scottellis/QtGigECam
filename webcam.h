@@ -18,6 +18,8 @@ public:
 	
 	virtual bool getNextFrame(MIL_ID buf_id);
 
+	virtual QSize getImageSize();
+
 private:
 	int m_device;
 	VideoCapture m_vidcap;

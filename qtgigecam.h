@@ -2,10 +2,14 @@
 #define QTGIGECAM_H
 
 #include <mil.h>
-#include <QtGui/QMainWindow>
+#include <QtGui>
 #include "ui_qtgigecam.h"
 
-#include "capturethread.h"
+
+class CaptureThread;
+class Camera;
+
+enum CameraType { ctWebCam, ctPylonCam };
 
 
 class QtGigECam : public QMainWindow
@@ -22,15 +26,19 @@ public:
 public slots:
 	void startVideo();
 	void stopVideo();
+	void scaleImage();
+	void newImage(MIL_ID id);
 
 protected:
 	void timerEvent(QTimerEvent *event);
+	void resizeEvent(QResizeEvent *event);
 
 private:
 	void showImage(MIL_ID buf_id);
-	void prepareBuffers(int numBuffers);
+	bool prepareBuffers(int numBuffers);
 	void freeBuffers();
 	void prepareQueues();
+	bool createCamera();
 
 	Ui::QtGigECamClass ui;
 
@@ -45,11 +53,17 @@ private:
 	int m_frameRefreshTimer;
 	QLabel *m_pStatus;
 	int m_frameCount;
-	int m_width;
-	int m_height;
-	int m_pitch;
+	int m_imgWidth;
+	int m_imgHeight;
+	int m_imgPitch;
+
+	int m_nonImgClientHeight;
+	enum CameraType m_cameraType;
+	Camera *m_camera;
+	bool m_scaling;
 
 	MIL_ID m_milApp;
+	MIL_ID m_camera_buff;
 };
 
 #endif // QTGIGECAM_H

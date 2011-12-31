@@ -2,39 +2,30 @@
 #define CAPTURETHREAD_H
 
 #include <QThread>
-#include <QtGui>
 
 #include "camera.h"
-
-enum CameraType { ctWebCam, ctPylonCam };
-
-class QtGigECam;
 
 class CaptureThread : public QThread
 {
     Q_OBJECT
 
 public:
-    CaptureThread(QtGigECam *parent, CameraType type = ctWebCam);
-	virtual ~CaptureThread();
+    //CaptureThread();
+	//virtual ~CaptureThread();
 
-	bool connectCamera(int device);
-    void disconnectCamera();
-	bool isConnected();
-
-	bool startCapture();
+	bool startCapture(Camera *camera, MIL_ID buff_id);
     void stopCapture();
-    bool isStopped() { return m_stopped; }
+
+signals:
+	void newImage(MIL_ID buff_id);
 
 protected:
     void run();
 
 private:
-	QtGigECam *m_parent;
-	CameraType m_cameraType;
-	Camera *m_camera;    
-    volatile bool m_stopped;
-
+	Camera *m_camera;
+	MIL_ID m_buff;
+    volatile bool m_stop;
 };
 
 #endif // CAPTURETHREAD_H

@@ -94,11 +94,21 @@ void PylonCam::close()
 
 	freeBuffers();
 	freeBayerBuffers();
+
+	m_imgWidth = 0;
+	m_imgHeight = 0;
 }
 
 bool PylonCam::isOpen()
 {
 	return (m_hDev != 0);
+}
+
+QSize PylonCam::getImageSize()
+{
+	QSize sz(m_imgWidth, m_imgHeight);
+
+	return sz;
 }
 
 bool PylonCam::startCapture()

@@ -1,6 +1,10 @@
 #include "qtgigecam.h"
 
-//#define WEBCAM
+#include "capturethread.h"
+#include "camera.h"
+#include "pyloncam.h"
+#include "webcam.h"
+
 
 QtGigECam::QtGigECam(QWidget *parent, Qt::WFlags flags)
 	: QMainWindow(parent, flags)
@@ -10,13 +14,19 @@ QtGigECam::QtGigECam(QWidget *parent, Qt::WFlags flags)
 	m_frameCount = 0;
 	m_captureThread = NULL;
 	m_frameRateTimer = 0;
-	m_width = 0;
-	m_height = 0;
-	m_pitch = 0;
+	m_imgWidth = 0;
+	m_imgHeight = 0;
+	m_imgPitch = 0;
+	m_nonImgClientHeight = 0;
+	m_cameraType = ctWebCam;
+	m_camera = NULL;
+	m_camera_buff = 0;
 
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(close()));
 	connect(ui.actionStart, SIGNAL(triggered()), this, SLOT(startVideo()));
 	connect(ui.actionStop, SIGNAL(triggered()), this, SLOT(stopVideo()));
+	connect(ui.actionScale, SIGNAL(triggered()), this, SLOT(scaleImage()));
+
 
 	m_pStatus = new QLabel(this);
 	m_pStatus->setAlignment(Qt::AlignCenter | Qt::AlignLeft);
@@ -25,46 +35,92 @@ QtGigECam::QtGigECam(QWidget *parent, Qt::WFlags flags)
 
 	ui.actionStop->setEnabled(false);
 	ui.actionStart->setEnabled(true);
+	m_scaling = ui.actionScale->isChecked();
 
-	m_milApp = MappAlloc(M_DEFAULT, M_NULL);
-
-	prepareBuffers(4);
+	m_milApp = MappAlloc(M_DEFAULT, M_NULL);	
 }
 
 QtGigECam::~QtGigECam()
 {
 	if (m_captureThread) {
 		stopVideo();
-		m_captureThread->disconnectCamera();
 		delete m_captureThread;
 		m_captureThread = NULL;
 	}
 
+	if (m_camera) {
+		delete m_camera;
+		m_camera = NULL;
+	}
+		
 	freeBuffers();
 
 	if (m_milApp)
 		MappFree(m_milApp);
 }
 
+void QtGigECam::scaleImage()
+{
+	m_scaling = ui.actionScale->isChecked();
+}
+
+bool QtGigECam::createCamera()
+{
+	if (m_captureThread && m_captureThread->isRunning()) {
+		stopVideo();
+	}
+
+	if (m_camera) {
+		delete m_camera;
+		m_camera = NULL;
+	}
+
+	switch (m_cameraType) {
+	case ctWebCam:
+		m_camera = new WebCam();
+		break;
+
+	case ctPylonCam:
+		m_camera = new PylonCam();
+		break;
+
+	default:
+		m_camera = NULL;
+	}
+
+	return (m_camera != NULL);
+}
+
 void QtGigECam::startVideo()
 {
+	if (!m_camera) {
+		if (!createCamera())
+			return;
+	}
+
+	if (!m_camera->open()) {
+		delete m_camera;
+		m_camera = NULL;
+	}
+
+	if (!prepareBuffers(4))
+		return;
+
+	prepareQueues();
+
 	if (!m_captureThread) {
-#ifdef WEBCAM
-		m_captureThread = new CaptureThread(this, ctWebCam);
-#else
-		m_captureThread = new CaptureThread(this, ctPylonCam);
-#endif
+		m_captureThread = new CaptureThread();
 
 		if (!m_captureThread)
 			return;
 	}
 
-	prepareQueues();
+	connect(m_captureThread, SIGNAL(newImage(MIL_ID)), this, SLOT(newImage(MIL_ID)), Qt::DirectConnection);
 
-	if (m_captureThread->startCapture()) {
+	if (m_captureThread->startCapture(m_camera, m_camera_buff)) {
 		m_frameCount = 0;
 		m_frameRateTimer = startTimer(3000);
-		m_frameRefreshTimer = startTimer(30);
+		m_frameRefreshTimer = startTimer(20);
 		ui.actionStart->setEnabled(false);
 		ui.actionStop->setEnabled(true);
 	}
@@ -82,19 +138,6 @@ void QtGigECam::stopVideo()
 	ui.actionStart->setEnabled(true);
 }
 
-bool QtGigECam::setGrabFrame(MIL_ID buf_id)
-{
-	m_frameCount++;
-
-	if (!m_frameQMutex.tryLock())
-		return false;
-	
-	m_frameQueue.enqueue(buf_id);
-	m_frameQMutex.unlock();
-
-	return true;
-}
-
 MIL_ID QtGigECam::getFreeBuffer()
 {
 	MIL_ID buf_id = 0;
@@ -108,6 +151,27 @@ MIL_ID QtGigECam::getFreeBuffer()
 	m_freeQMutex.unlock();
 
 	return buf_id;
+}
+
+void QtGigECam::newImage(MIL_ID src_buff)
+{
+	MIL_ID dest_buff;
+
+	m_frameCount++;
+
+	if (!m_frameQMutex.tryLock())
+		return;
+
+	dest_buff = getFreeBuffer();
+
+	if (!dest_buff) {
+		m_frameQMutex.unlock();
+		return;
+	}
+
+	MbufCopy(src_buff, dest_buff);
+	m_frameQueue.enqueue(dest_buff);
+	m_frameQMutex.unlock();
 }
 
 void QtGigECam::timerEvent(QTimerEvent *event)
@@ -137,6 +201,14 @@ void QtGigECam::timerEvent(QTimerEvent *event)
 	}
 }
 
+void QtGigECam::resizeEvent(QResizeEvent *event)
+{
+	if (m_nonImgClientHeight == 0)
+		m_nonImgClientHeight = ui.mainToolBar->height() + ui.statusBar->height();
+
+	ui.cameraView->resize(size().width(), size().height() - m_nonImgClientHeight);
+}
+
 void QtGigECam::showImage(MIL_ID buf_id)
 {	
 	uchar *buff;
@@ -146,36 +218,43 @@ void QtGigECam::showImage(MIL_ID buf_id)
 
 	buff = (uchar *) MbufInquire(buf_id, M_HOST_ADDRESS, NULL);
 
-	QImage img((const uchar*) buff, m_width, m_height, m_pitch, QImage::Format_RGB888);
-
-//#ifdef WEBCAM
+	QImage img((const uchar*) buff, m_imgWidth, m_imgHeight, m_imgPitch, QImage::Format_RGB888);
 	QImage swappedImg = img.rgbSwapped();
-	ui.cameraView->setPixmap(QPixmap::fromImage(swappedImg));
-//#else
-//	ui.cameraView->setPixmap(QPixmap::fromImage(img));
-//#endif
+
+	if (m_scaling) {
+		QImage scaledImg = swappedImg.scaled(ui.cameraView->size(), Qt::KeepAspectRatioByExpanding);
+		ui.cameraView->setPixmap(QPixmap::fromImage(scaledImg));
+	}
+	else {
+		ui.cameraView->setPixmap(QPixmap::fromImage(swappedImg));	
+	}
 }
 
-void QtGigECam::prepareBuffers(int numBuffers)
+bool QtGigECam::prepareBuffers(int numBuffers)
 {
-	MIL_ID buf_id = 0;
+	QSize sz;
+	MIL_ID buf_id;
+
+	sz = m_camera->getImageSize();
+
+	// check if we are already done
+	if (m_imgWidth != 0 && sz.width() == m_imgWidth && sz.height() == m_imgHeight)
+		return true;
 
 	freeBuffers();
 
 	for (int i = 0; i < numBuffers; i++) {
-#ifdef WEBCAM
-		buf_id = MbufAllocColor(M_DEFAULT_HOST, 3, 640, 480, 8 + M_UNSIGNED, M_IMAGE + M_PROC + M_BGR24 + M_PACKED, M_NULL);
-#else
-		buf_id = MbufAllocColor(M_DEFAULT_HOST, 3, 1278, 958, 8 + M_UNSIGNED, M_IMAGE + M_PROC + M_BGR24 + M_PACKED, M_NULL);
-#endif
+		buf_id = MbufAllocColor(M_DEFAULT_HOST, 3, sz.width(), sz.height(), 8 + M_UNSIGNED, M_IMAGE + M_PROC + M_BGR24 + M_PACKED, M_NULL);
 		m_freeQueue.enqueue(buf_id);
 	}
 
-	if (m_pitch == 0) {
-		m_pitch = MbufInquire(buf_id, M_PITCH_BYTE, NULL);
-		m_width = MbufInquire(buf_id, M_SIZE_X, NULL);
-		m_height = MbufInquire(buf_id, M_SIZE_Y, NULL);
-	}
+	m_camera_buff = MbufAllocColor(M_DEFAULT_HOST, 3, sz.width(), sz.height(), 8 + M_UNSIGNED, M_IMAGE + M_PROC + M_BGR24 + M_PACKED, M_NULL);
+
+	m_imgPitch = MbufInquire(buf_id, M_PITCH_BYTE, NULL);
+	m_imgWidth = MbufInquire(buf_id, M_SIZE_X, NULL);
+	m_imgHeight = MbufInquire(buf_id, M_SIZE_Y, NULL);
+
+	return true;
 }
 
 void QtGigECam::freeBuffers()
@@ -195,8 +274,17 @@ void QtGigECam::freeBuffers()
 		MbufFree(buf_id);
 	}
 
+	if (m_camera_buff) {
+		MbufFree(m_camera_buff);
+		m_camera_buff = NULL;
+	}		
+
 	m_frameQMutex.unlock();
 	m_freeQMutex.unlock();
+	
+	m_imgPitch = 0;
+	m_imgWidth = 0;
+	m_imgHeight = 0;
 }
 
 void QtGigECam::prepareQueues()

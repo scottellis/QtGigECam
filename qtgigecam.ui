@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1232</width>
-    <height>903</height>
+    <width>640</width>
+    <height>544</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>200</width>
+    <height>200</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>QtGigECam</string>
@@ -17,17 +23,32 @@
    <widget class="QLabel" name="cameraView">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>1211</width>
-      <height>811</height>
+      <x>0</x>
+      <y>0</y>
+      <width>640</width>
+      <height>480</height>
      </rect>
     </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>32</width>
+      <height>32</height>
+     </size>
+    </property>
     <property name="frameShape">
-     <enum>QFrame::Box</enum>
+     <enum>QFrame::NoFrame</enum>
     </property>
     <property name="text">
-     <string>TextLabel</string>
+     <string>Camera image here</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
    </widget>
   </widget>
@@ -36,7 +57,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1232</width>
+     <width>640</width>
      <height>21</height>
     </rect>
    </property>
@@ -44,12 +65,29 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionStart"/>
-    <addaction name="actionStop"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
+   <widget class="QMenu" name="menuImage">
+    <property name="title">
+     <string>Camera</string>
+    </property>
+    <widget class="QMenu" name="menuCamera_type">
+     <property name="title">
+      <string>Camera type ...</string>
+     </property>
+     <addaction name="actionWeb_camera"/>
+     <addaction name="actionBasler_GigE_camera"/>
+    </widget>
+    <addaction name="actionStart"/>
+    <addaction name="actionStop"/>
+    <addaction name="separator"/>
+    <addaction name="actionScale"/>
+    <addaction name="separator"/>
+    <addaction name="menuCamera_type"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuImage"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -90,6 +128,52 @@
    </property>
    <property name="iconVisibleInMenu">
     <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionScale">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Scale image</string>
+   </property>
+   <property name="toolTip">
+    <string>Enable/disable image scaling</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionWeb_Camera">
+   <property name="text">
+    <string>Web Camera</string>
+   </property>
+  </action>
+  <action name="actionPylon_Camera">
+   <property name="text">
+    <string>Pylon Camera</string>
+   </property>
+  </action>
+  <action name="actionWeb_camera">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>USB web camera</string>
+   </property>
+  </action>
+  <action name="actionBasler_GigE_camera">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Basler GigE camera</string>
    </property>
   </action>
  </widget>

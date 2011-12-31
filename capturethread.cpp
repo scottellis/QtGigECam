@@ -1,52 +1,18 @@
 #include "capturethread.h"
 #include "qtgigecam.h"
 
-#include "webcam.h"
-#include "pyloncam.h"
 
-
-CaptureThread::CaptureThread(QtGigECam *parent, CameraType type) 
-	: QThread(), m_parent(parent)
+bool CaptureThread::startCapture(Camera *camera, MIL_ID buff_id)
 {
-    m_stopped = true;
-	m_cameraType = type;
-
-	switch (type) {
-	case ctWebCam:
-		m_camera = new WebCam();
-		break;
-
-	case ctPylonCam:
-		m_camera = new PylonCam();
-		break;
-
-	default:
-		m_camera = NULL;
-	}
-}
-
-CaptureThread::~CaptureThread()
-{
-	disconnectCamera();
-
-	if (m_camera) {
-		delete m_camera;
-		m_camera = NULL;
-	}
-}
-
-bool CaptureThread::startCapture()
-{
-	if (!m_stopped)
+	if (isRunning())
 		return false;
 
-	if (!m_camera)
+	if (!camera || !camera->open())
 		return false;
 
-	if (!m_camera->open())
-		return false;
-
-	m_stopped = false;
+	m_camera = camera;
+	m_buff = buff_id;
+	m_stop = false;
 
 	if (!m_camera->startCapture())
 		return false;
@@ -58,65 +24,19 @@ bool CaptureThread::startCapture()
 
 void CaptureThread::stopCapture()
 {    
-	m_stopped = true;
-/*
-	QMutex timeoutMutex;
-	QWaitCondition waitTemp;
-
-	while (!isFinished()) {
-		timeoutMutex.lock();
-		waitTemp.wait(&timeoutMutex, 200);
-	}
-*/
+	m_stop = true;
 }
 
 void CaptureThread::run()
 {
-	Mat frame;
-	MIL_ID buf_id = 0;
-	
-    while (!m_stopped) {
-		if (!buf_id)
-			buf_id = m_parent->getFreeBuffer();
-
-		if (!buf_id) {
+    while (!m_stop) {
+		if (!m_camera->getNextFrame(m_buff)) {
 			msleep(10);
 			continue;
 		}
 
-		if (!m_camera->getNextFrame(buf_id)) {
-			msleep(10);
-			continue;
-		}
-
-		if (m_parent->setGrabFrame(buf_id))
-			buf_id = 0;
+		emit newImage(m_buff);
     }
 
 	m_camera->stopCapture();
-	
-	if (buf_id)
-		MbufFree(buf_id);
-}
-
-bool CaptureThread::connectCamera(int device)
-{
-	if (!m_camera)
-		return false;
-
-	return m_camera->open();
-}
-
-void CaptureThread::disconnectCamera()
-{
-	if (m_camera)
-		m_camera->close();
-}
-
-bool CaptureThread::isConnected()
-{
-	if (!m_camera)
-		return false;
-
-    return m_camera->isOpen();
 }

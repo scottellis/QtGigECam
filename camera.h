@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include <QThread>
+#include <QSize>
 #include <Mil.h>
 
 class Camera : protected QThread
@@ -16,6 +17,9 @@ public:
 	virtual bool startCapture() { return true; }
 	virtual bool stopCapture() { return true; }
 	virtual bool getNextFrame(MIL_ID buf_id) = 0;
+
+	// should be available after open()
+	virtual QSize getImageSize() = 0;
 };
 
 #endif // CAMERA_H

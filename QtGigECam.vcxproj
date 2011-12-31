@@ -122,6 +122,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
+    <ClInclude Include="imagecallback.h" />
     <ClInclude Include="pyloncam.h" />
     <ClInclude Include="webcam.h" />
     <CustomBuild Include="capturethread.h">
