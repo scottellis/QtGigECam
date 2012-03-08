@@ -9,19 +9,16 @@ using namespace cv;
 class WebCam : public Camera
 {
 public:
-	WebCam();
+	WebCam() {}
 	virtual ~WebCam();
 
 	virtual bool open();
 	virtual void close();
 	virtual bool isOpen();
-	
 	virtual bool getNextFrame(MIL_ID buf_id);
-
 	virtual QSize getImageSize();
 
 private:
-	int m_device;
 	VideoCapture m_vidcap;
 };
 

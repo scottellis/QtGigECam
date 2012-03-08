@@ -45,6 +45,15 @@ private:
 	bool allocateBayerBuffers();
 	void freeBayerBuffers();
 
+	bool getNodeMap();
+	bool getGainNode();
+	bool getGainValue(long *current, long *min, long *max);
+	bool setGainValue(long val);
+	bool getExposureNode();
+	bool getExposureValue(long *current, long *min, long *max);
+	bool setExposureValue(long val);
+	void adjustSettings();
+
 	PYLON_DEVICE_HANDLE m_hDev;
 	PYLON_STREAMGRABBER_HANDLE m_hGrabber;
 	PYLON_WAITOBJECT_HANDLE m_hWait;
@@ -59,6 +68,10 @@ private:
 	QMutex m_copyMutex;
 	int m_copyBuffIndex;
 	volatile bool m_stopThread;
+
+	NODEMAP_HANDLE m_hNodeMap;
+	NODE_HANDLE m_hGainNode;
+    NODE_HANDLE m_hExposureNode;  
 };
 
 #endif // PYLONCAM_H

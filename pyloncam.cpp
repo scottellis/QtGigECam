@@ -12,6 +12,9 @@ PylonCam::PylonCam()
 	m_milWBCoefficients = 0;
 	m_bayerConversionType = M_BAYER_BG;
 	m_copyBuffIndex = -1;
+	m_hNodeMap = 0;
+	m_hGainNode = 0;
+    m_hExposureNode = 0;
 
 	for (int i = 0; i < NUM_BUFFERS; i++) {
 		m_buff[i] = NULL;
@@ -71,6 +74,8 @@ bool PylonCam::open()
 
 	if (!allocateBuffers(8))
 		goto open_done;
+
+	adjustSettings();
 
 	success = true;
 
@@ -266,6 +271,12 @@ bool PylonCam::setTriggerMode()
 {
 	GENAPIC_RESULT result;
 
+	if (PylonDeviceFeatureIsAvailable(m_hDev, "EnumEntry_TriggerControlImplementation_Standard")) {
+		result = PylonDeviceFeatureFromString(m_hDev, "TriggerControlImplementation", "Standard");
+		if (isError(result))
+			return false;
+	}
+
 	if (PylonDeviceFeatureIsAvailable(m_hDev, "EnumEntry_TriggerSelector_AcquisitionStart")) {
 		result = PylonDeviceFeatureFromString(m_hDev, "TriggerSelector", "AcquisitionStart");
 		if (isError(result))
@@ -285,6 +296,25 @@ bool PylonCam::setTriggerMode()
         if (isError(result))
 			return false;
     }
+
+	if (PylonDeviceFeatureIsAvailable(m_hDev, "EnumEntry_TriggerSource_Line1")) {
+		result = PylonDeviceFeatureFromString(m_hDev, "TriggerSource", "Line1");
+		if (isError(result))
+			return false;
+	}
+
+	if (PylonDeviceFeatureIsAvailable(m_hDev, "EnumEntry_TriggerActivation_FallingEdge")) {
+		result = PylonDeviceFeatureFromString(m_hDev, "TriggerActivation", "FallingEdge");
+		if (isError(result))
+			return false;
+	}
+
+	// choices are Timed (Exposure setting) or TriggerWidth (dsp controlled)
+	if (PylonDeviceFeatureIsAvailable(m_hDev, "EnumEntry_ExposureMode_Timed")) {
+		result = PylonDeviceFeatureFromString(m_hDev, "ExposureMode", "Timed");
+		if (isError(result))
+			return false;
+	}
 
 	return true;
 }
@@ -504,4 +534,179 @@ void PylonCam::freeBayerBuffers()
 		MbufFree(m_milWBCoefficients);
 		m_milWBCoefficients = 0;
 	}
+}
+
+void PylonCam::adjustSettings()
+{
+	long gainCurrent, gainMin, gainMax;
+	long exposureCurrent, exposureMin, exposureMax;
+
+	getGainValue(&gainCurrent, &gainMin, &gainMax);
+
+	getExposureValue(&exposureCurrent, &exposureMin, &exposureMax);
+
+	setExposureValue(50);
+}
+
+#define NODE_NAME_GAIN          "GainRaw"
+#define NODE_NAME_EXPOSURE      "ExposureTimeRaw"
+
+bool PylonCam::getNodeMap()
+{
+	GENAPIC_RESULT result;
+
+	if (m_hNodeMap)
+		return true;
+
+	result = PylonDeviceGetNodeMap(m_hDev, &m_hNodeMap);
+    if (isError(result))
+		return false;
+
+	return true;
+}
+
+bool PylonCam::getGainNode()
+{
+	GENAPIC_RESULT result;
+
+	if (m_hGainNode)
+		return true;
+
+	if (!getNodeMap())
+		return false;
+
+	result = GenApiNodeMapGetNode(m_hNodeMap, NODE_NAME_GAIN, &m_hGainNode);
+	if (isError(result))
+		return false;
+
+	if (GENAPIC_INVALID_HANDLE == m_hGainNode) {
+		m_hGainNode = 0;
+		return false;
+	}
+
+	return true;
+}
+
+bool PylonCam::getGainValue(long *current, long *min, long *max)
+{
+	GENAPIC_RESULT result;
+	int64_t val;
+
+	if (!getGainNode())
+		return false;
+
+	if (current) {
+		result = GenApiIntegerGetValue(m_hGainNode, &val); 
+		if (isError(result))
+			return false;
+
+		*current = (long) val;
+	}
+
+	if (min) {
+		result = GenApiIntegerGetMin(m_hGainNode, &val);
+		if (isError(result))
+			return false;
+
+		*min = (long) val;
+	}
+
+	if (max) {
+		result = GenApiIntegerGetMax(m_hGainNode, &val);
+		if (isError(result))
+			return false;
+
+		*max = (long) val;
+	}
+
+	return true;
+}
+
+bool PylonCam::setGainValue(long val)
+{
+	GENAPIC_RESULT result;
+	int64_t val64 = val;
+
+	if (!getGainNode())
+		return false;
+	
+	result = GenApiIntegerSetValue(m_hGainNode, val64);
+		
+	if (isError(result))
+		return false;
+
+	return true;
+}
+
+bool PylonCam::getExposureNode()
+{
+	GENAPIC_RESULT result;
+
+	if (m_hExposureNode)
+		return true;
+
+	if (!getNodeMap())
+		return false;
+
+	result = GenApiNodeMapGetNode(m_hNodeMap, NODE_NAME_EXPOSURE, &m_hExposureNode);
+	if (isError(result))
+		return false;
+
+	if (GENAPIC_INVALID_HANDLE == m_hExposureNode) {
+		m_hExposureNode = 0;
+		return false;
+	}
+
+	return true;
+}
+
+bool PylonCam::getExposureValue(long *current, long *min, long *max)
+{
+	GENAPIC_RESULT result;
+	int64_t val;
+
+	if (!getExposureNode())
+		return false;
+
+	if (current) {
+		result = GenApiIntegerGetValue(m_hExposureNode, &val); 
+		if (isError(result))
+			return false;
+
+		*current = (long) val;
+	}
+
+	if (min) {
+		result = GenApiIntegerGetMin(m_hExposureNode, &val);
+		if (isError(result))
+			return false;
+
+		*min = (long) val;
+	}
+
+	if (max) {
+		result = GenApiIntegerGetMax(m_hExposureNode, &val);
+		if (isError(result))
+			return false;
+
+		*max = (long) val;
+	}
+
+	return true;
+}
+
+bool PylonCam::setExposureValue(long val)
+{
+	GENAPIC_RESULT result;
+	int64_t val64 = val;
+
+	if (!getExposureNode())
+		return false;
+
+	result = GenApiIntegerSetValue(m_hExposureNode, val64);
+		
+	if (isError(result))
+		return false;
+
+	return true;
 }

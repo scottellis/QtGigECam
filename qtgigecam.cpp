@@ -14,13 +14,31 @@ QtGigECam::QtGigECam(QWidget *parent, Qt::WFlags flags)
 	m_frameCount = 0;
 	m_captureThread = NULL;
 	m_frameRateTimer = 0;
+	m_frameRefreshTimer = 0;
 	m_imgWidth = 0;
 	m_imgHeight = 0;
 	m_imgPitch = 0;
-	m_nonImgClientHeight = 0;
-	m_cameraType = ctWebCam;
+	m_cameraType = ctPylonCam;
 	m_camera = NULL;
 	m_camera_buff = 0;
+
+	QWidget *centralWidget = new QWidget(this);
+	QVBoxLayout *verticalLayout = new QVBoxLayout(centralWidget);
+	verticalLayout->setSpacing(6);
+	verticalLayout->setContentsMargins(0, 0, 0, 0);
+	m_cameraView = new QLabel(centralWidget);
+	
+	QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	sizePolicy.setHorizontalStretch(0);
+	sizePolicy.setVerticalStretch(0);
+	sizePolicy.setHeightForWidth(m_cameraView->sizePolicy().hasHeightForWidth());
+	m_cameraView->setSizePolicy(sizePolicy);
+	m_cameraView->setMinimumSize(QSize(320, 240));
+	m_cameraView->setAlignment(Qt::AlignCenter);
+
+	verticalLayout->addWidget(m_cameraView);
+
+	setCentralWidget(centralWidget);
 
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(close()));
 	connect(ui.actionStart, SIGNAL(triggered()), this, SLOT(startVideo()));
@@ -59,7 +77,7 @@ QtGigECam::~QtGigECam()
 		MappFree(m_milApp);
 }
 
-void QtGigECam::scaleImage()
+void QtGigECam::toggleScaling()
 {
 	m_scaling = ui.actionScale->isChecked();
 }
@@ -101,6 +119,7 @@ void QtGigECam::startVideo()
 	if (!m_camera->open()) {
 		delete m_camera;
 		m_camera = NULL;
+		return;
 	}
 
 	if (!prepareBuffers(4))
@@ -128,11 +147,20 @@ void QtGigECam::startVideo()
 
 void QtGigECam::stopVideo()
 {
-	if (m_captureThread)
+	if (m_captureThread) {
+		disconnect(m_captureThread, SIGNAL(newImage(MIL_ID)), this, SLOT(newImage(MIL_ID)));
 		m_captureThread->stopCapture();
+	}
+	
+	if (m_frameRateTimer) {
+		killTimer(m_frameRateTimer);
+		m_frameRateTimer = 0;
+	}
 
-	killTimer(m_frameRateTimer);
-	killTimer(m_frameRefreshTimer);
+	if (m_frameRefreshTimer) {
+		killTimer(m_frameRefreshTimer);
+		m_frameRefreshTimer = 0;
+	}
 
 	ui.actionStop->setEnabled(false);
 	ui.actionStart->setEnabled(true);
@@ -201,14 +229,6 @@ void QtGigECam::timerEvent(QTimerEvent *event)
 	}
 }
 
-void QtGigECam::resizeEvent(QResizeEvent *event)
-{
-	if (m_nonImgClientHeight == 0)
-		m_nonImgClientHeight = ui.mainToolBar->height() + ui.statusBar->height();
-
-	ui.cameraView->resize(size().width(), size().height() - m_nonImgClientHeight);
-}
-
 void QtGigECam::showImage(MIL_ID buf_id)
 {	
 	uchar *buff;
@@ -222,11 +242,11 @@ void QtGigECam::showImage(MIL_ID buf_id)
 	QImage swappedImg = img.rgbSwapped();
 
 	if (m_scaling) {
-		QImage scaledImg = swappedImg.scaled(ui.cameraView->size(), Qt::KeepAspectRatioByExpanding);
-		ui.cameraView->setPixmap(QPixmap::fromImage(scaledImg));
+		QImage scaledImg = swappedImg.scaled(m_cameraView->size(), Qt::KeepAspectRatioByExpanding);
+		m_cameraView->setPixmap(QPixmap::fromImage(scaledImg));
 	}
 	else {
-		ui.cameraView->setPixmap(QPixmap::fromImage(swappedImg));	
+		m_cameraView->setPixmap(QPixmap::fromImage(swappedImg));	
 	}
 }
 

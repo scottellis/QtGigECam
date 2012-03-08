@@ -20,18 +20,14 @@ public:
 	QtGigECam(QWidget *parent = 0, Qt::WFlags flags = 0);
 	~QtGigECam();
 
-	bool setGrabFrame(MIL_ID buf_id);
-	MIL_ID getFreeBuffer();
-
 public slots:
 	void startVideo();
 	void stopVideo();
-	void scaleImage();
+	void toggleScaling();
 	void newImage(MIL_ID id);
 
 protected:
 	void timerEvent(QTimerEvent *event);
-	void resizeEvent(QResizeEvent *event);
 
 private:
 	void showImage(MIL_ID buf_id);
@@ -39,6 +35,7 @@ private:
 	void freeBuffers();
 	void prepareQueues();
 	bool createCamera();
+	MIL_ID getFreeBuffer();
 
 	Ui::QtGigECamClass ui;
 
@@ -57,10 +54,10 @@ private:
 	int m_imgHeight;
 	int m_imgPitch;
 
-	int m_nonImgClientHeight;
 	enum CameraType m_cameraType;
 	Camera *m_camera;
 	bool m_scaling;
+	QLabel *m_cameraView;
 
 	MIL_ID m_milApp;
 	MIL_ID m_camera_buff;

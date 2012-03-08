@@ -93,8 +93,5 @@
     <ClInclude Include="pyloncam.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imagecallback.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
