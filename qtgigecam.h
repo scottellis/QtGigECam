@@ -39,12 +39,11 @@ private:
 
 	int m_frameRateTimer;
 	int m_frameRefreshTimer;
-	QLabel *m_pStatus;
+	QLabel *m_status;
 	int m_frameCount;
 	int m_imgWidth;
 	int m_imgHeight;
 	bool m_scaling;
-	QLabel *m_cameraView;
 };
 
 #endif // QTGIGECAM_H

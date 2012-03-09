@@ -16,34 +16,14 @@ QtGigECam::QtGigECam(QWidget *parent, Qt::WFlags flags)
 	m_imgHeight = 0;
 	m_camera = NULL;
 
-	QWidget *centralWidget = new QWidget(this);
-	QVBoxLayout *verticalLayout = new QVBoxLayout(centralWidget);
-	verticalLayout->setSpacing(6);
-	verticalLayout->setContentsMargins(0, 0, 0, 0);
-	m_cameraView = new QLabel(centralWidget);
-	
-	QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-	sizePolicy.setHorizontalStretch(0);
-	sizePolicy.setVerticalStretch(0);
-	sizePolicy.setHeightForWidth(m_cameraView->sizePolicy().hasHeightForWidth());
-	m_cameraView->setSizePolicy(sizePolicy);
-	m_cameraView->setMinimumSize(QSize(320, 240));
-	m_cameraView->setAlignment(Qt::AlignCenter);
-
-	verticalLayout->addWidget(m_cameraView);
-
-	setCentralWidget(centralWidget);
-
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(close()));
 	connect(ui.actionStart, SIGNAL(triggered()), this, SLOT(startVideo()));
 	connect(ui.actionStop, SIGNAL(triggered()), this, SLOT(stopVideo()));
 	connect(ui.actionScale, SIGNAL(triggered()), this, SLOT(toggleScaling()));
 
-
-	m_pStatus = new QLabel(this);
-	m_pStatus->setAlignment(Qt::AlignCenter | Qt::AlignLeft);
-	m_pStatus->setText("0.0 fps  ");
-	ui.statusBar->addPermanentWidget(m_pStatus);
+	m_status = new QLabel(this);
+	m_status->setAlignment(Qt::AlignCenter | Qt::AlignLeft);
+	ui.statusBar->addPermanentWidget(m_status);
 
 	ui.actionStop->setEnabled(false);
 	ui.actionStart->setEnabled(true);
@@ -152,11 +132,8 @@ void QtGigECam::newImage(Mat frame)
 void QtGigECam::timerEvent(QTimerEvent *event)
 {
 	if (event->timerId() == m_frameRateTimer) {
-		QString fps;
-		double count = m_frameCount;
+		m_status->setText(QString().sprintf("%0.1lf fps", (double)m_frameCount / 3.0));
 		m_frameCount = 0;
-		fps.sprintf("%0.1lf fps  ", count / 3.0);
-		m_pStatus->setText(fps);		
 	}
 	else {
 		Mat frame;
@@ -182,11 +159,11 @@ void QtGigECam::showImage(Mat *frame)
 	//QImage swappedImg = img.rgbSwapped();
 
 	if (m_scaling) {
-		QImage scaledImg = img.scaled(m_cameraView->size(), Qt::KeepAspectRatioByExpanding);
-		m_cameraView->setPixmap(QPixmap::fromImage(scaledImg));
+		QImage scaledImg = img.scaled(ui.cameraView->size(), Qt::KeepAspectRatioByExpanding);
+		ui.cameraView->setPixmap(QPixmap::fromImage(scaledImg));
 	}
 	else {
-		m_cameraView->setPixmap(QPixmap::fromImage(img));	
+		ui.cameraView->setPixmap(QPixmap::fromImage(img));
 	}
 }
 
