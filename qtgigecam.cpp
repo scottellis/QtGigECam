@@ -159,7 +159,7 @@ void QtGigECam::showImage(Mat *frame)
 	//QImage swappedImg = img.rgbSwapped();
 
 	if (m_scaling) {
-		QImage scaledImg = img.scaled(ui.cameraView->size(), Qt::KeepAspectRatioByExpanding);
+		QImage scaledImg = img.scaled(ui.cameraView->size(), Qt::KeepAspectRatio);
 		ui.cameraView->setPixmap(QPixmap::fromImage(scaledImg));
 	}
 	else {

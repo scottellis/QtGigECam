@@ -34,6 +34,7 @@ private:
 	bool setTriggerMode();
 	bool setAcquisitionMode();
 	bool setPacketSize(int size);
+	bool setAOI(int width, int height, int offsetX, int offsetY);
 	bool getPayloadSize();
 	bool openStreamGrabber();
 	void closeStreamGrabber();

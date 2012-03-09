@@ -66,11 +66,17 @@ bool PylonCam::open()
 	if (!setPacketSize(8192))
 		goto open_done;
 
+	if (!setAOI(1024, 768, 2, 8))
+		goto open_done;
+
 	if (!getPayloadSize())
 		goto open_done;
 
 	if (!getImageDimensions())
 		goto open_done;
+
+	setGainValue(300);
+	setExposureValue(100);
 
 	//if (!allocateBayerBuffers())
 	//	return false;
@@ -363,6 +369,44 @@ bool PylonCam::setPacketSize(int size)
         if (isError(result))
 			return false;
     }
+
+	return true;
+}
+
+// For the sca1300-32 Scout cameras, these are the ranges
+// Mono: 1280x960, any increment
+// Color: 1278x958, increment by two, must fall on even boundary
+bool PylonCam::setAOI(int width, int height, int offsetX, int offsetY)
+{
+	GENAPIC_RESULT result;
+
+	if (!PylonDeviceFeatureIsWritable(m_hDev, "Width"))
+		return false;
+
+	if (!PylonDeviceFeatureIsWritable(m_hDev, "Height"))
+		return false;
+
+	if (!PylonDeviceFeatureIsWritable(m_hDev, "OffsetX"))
+		return false;
+
+	if (!PylonDeviceFeatureIsWritable(m_hDev, "OffsetY"))
+		return false;
+
+	result = PylonDeviceSetIntegerFeature(m_hDev, "Width", width);
+	if (isError(result))
+		return false;
+
+	result = PylonDeviceSetIntegerFeature(m_hDev, "OffsetX", offsetX);
+	if (isError(result))
+		return false;
+
+	result = PylonDeviceSetIntegerFeature(m_hDev, "Height", height);
+	if (isError(result))
+		return false;
+
+	result = PylonDeviceSetIntegerFeature(m_hDev, "OffsetY", offsetY);
+	if (isError(result))
+		return false;
 
 	return true;
 }
