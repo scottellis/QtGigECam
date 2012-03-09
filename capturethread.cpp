@@ -1,8 +1,9 @@
 #include "capturethread.h"
-#include "qtgigecam.h"
+
+//#include "qtgigecam.h"
 
 
-bool CaptureThread::startCapture(Camera *camera, MIL_ID buff_id)
+bool CaptureThread::startCapture(Camera *camera)
 {
 	if (isRunning())
 		return false;
@@ -11,7 +12,6 @@ bool CaptureThread::startCapture(Camera *camera, MIL_ID buff_id)
 		return false;
 
 	m_camera = camera;
-	m_buff = buff_id;
 	m_stop = false;
 
 	if (!m_camera->startCapture())
@@ -29,13 +29,15 @@ void CaptureThread::stopCapture()
 
 void CaptureThread::run()
 {
+	Mat frame;
+
     while (!m_stop) {
-		if (!m_camera->getNextFrame(m_buff)) {
+		if (!m_camera->getNextFrame(&frame)) {
 			msleep(10);
 			continue;
 		}
 
-		emit newImage(m_buff);
+		emit newImage(frame);
     }
 
 	m_camera->stopCapture();

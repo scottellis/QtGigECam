@@ -59,9 +59,6 @@
     <ClCompile Include="capturethread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="webcam.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pyloncam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -83,9 +80,6 @@
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_qtgigecam.h">
       <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="webcam.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="camera.h">
       <Filter>Header Files</Filter>

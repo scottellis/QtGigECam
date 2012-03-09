@@ -13,18 +13,18 @@ public:
     //CaptureThread();
 	//virtual ~CaptureThread();
 
-	bool startCapture(Camera *camera, MIL_ID buff_id);
+	bool startCapture(Camera *camera);
     void stopCapture();
 
 signals:
-	void newImage(MIL_ID buff_id);
+	void newImage(Mat frame);
 
 protected:
     void run();
 
 private:
 	Camera *m_camera;
-	MIL_ID m_buff;
+	//MIL_ID m_buff;
     volatile bool m_stop;
 };
 

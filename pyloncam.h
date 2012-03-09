@@ -20,7 +20,7 @@ public:
 	virtual bool startCapture();
 	virtual bool stopCapture();
 
-	virtual bool getNextFrame(MIL_ID buf_id);
+	virtual bool getNextFrame(Mat *frame);
 
 	virtual QSize getImageSize();
 
@@ -42,8 +42,8 @@ private:
 	bool prepareBuffers();
 	bool releaseBuffers();
 	bool getImageDimensions();
-	bool allocateBayerBuffers();
-	void freeBayerBuffers();
+	//bool allocateBayerBuffers();
+	//void freeBayerBuffers();
 
 	bool getNodeMap();
 	bool getGainNode();
@@ -62,8 +62,8 @@ private:
 	PYLON_STREAMBUFFER_HANDLE m_hBuff[NUM_BUFFERS];
 	int m_imgWidth;
 	int m_imgHeight;
-	MIL_ID m_milBayerImageBuf;
-	MIL_ID m_milWBCoefficients;
+	//MIL_ID m_milBayerImageBuf;
+	//MIL_ID m_milWBCoefficients;
 	long m_bayerConversionType;
 	QMutex m_copyMutex;
 	int m_copyBuffIndex;

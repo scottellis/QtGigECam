@@ -1,3 +1,6 @@
+
+#include <opencv2/imgproc/imgproc_c.h>
+
 #include "pyloncam.h"
 
 PylonCam::PylonCam()
@@ -8,9 +11,9 @@ PylonCam::PylonCam()
 	m_payloadSize = 0;
 	m_imgWidth = 0;
 	m_imgHeight = 0;
-	m_milBayerImageBuf = 0;
-	m_milWBCoefficients = 0;
-	m_bayerConversionType = M_BAYER_BG;
+	//m_milBayerImageBuf = 0;
+	//m_milWBCoefficients = 0;
+	//m_bayerConversionType = M_BAYER_BG;
 	m_copyBuffIndex = -1;
 	m_hNodeMap = 0;
 	m_hGainNode = 0;
@@ -69,8 +72,8 @@ bool PylonCam::open()
 	if (!getImageDimensions())
 		goto open_done;
 
-	if (!allocateBayerBuffers())
-		return false;
+	//if (!allocateBayerBuffers())
+	//	return false;
 
 	if (!allocateBuffers(8))
 		goto open_done;
@@ -98,7 +101,7 @@ void PylonCam::close()
 	}
 
 	freeBuffers();
-	freeBayerBuffers();
+	//freeBayerBuffers();
 
 	m_imgWidth = 0;
 	m_imgHeight = 0;
@@ -158,9 +161,10 @@ bool PylonCam::stopCapture()
 	return true;
 }
 
-bool PylonCam::getNextFrame(MIL_ID buf_id)
+bool PylonCam::getNextFrame(Mat *frame)
 {
 	GENAPIC_RESULT result;
+	CvSize sz = { m_imgWidth, m_imgHeight };
 	int index = -1;
 	bool ret = false;
 
@@ -171,13 +175,33 @@ bool PylonCam::getNextFrame(MIL_ID buf_id)
 	}
 	m_copyMutex.unlock();
 
-	if (index > 0) {
-		MbufPut(m_milBayerImageBuf, m_buff[index]);
-		MbufBayer(m_milBayerImageBuf, buf_id, m_milWBCoefficients, m_bayerConversionType);
-		PylonStreamGrabberQueueBuffer(m_hGrabber, m_hBuff[index], (void *) index);
-		ret = true;
+	if (index >= 0) {
+		//MbufPut(m_milBayerImageBuf, m_buff[index]);
+		//MbufBayer(m_milBayerImageBuf, buf_id, m_milWBCoefficients, m_bayerConversionType);
+		IplImage *bayer = cvCreateImage(sz, IPL_DEPTH_8U, 1);
+
+		if (bayer) {
+			bayer->imageData = (char *)m_buff[index];
+
+			IplImage *planar = cvCreateImage(sz, IPL_DEPTH_8U, 3);
+
+			if (planar) {
+				//cvCvtColor(bayer, planar, CV_BayerGB2BGR); // gives mosaic pattern
+				cvCvtColor(bayer, planar, CV_BayerBG2BGR);   // good, RB correct for Qt
+				//cvCvtColor(bayer, planar, CV_BayerBG2RGB); // no mosaic, but RB swapped for Qt
+				*frame = Mat(planar, true);
+				cvReleaseImage(&planar);
+				ret = true;
+			}
+
+			cvReleaseImage(&bayer);
+		}
 	}
-	
+
+	// requeue the grab buffer
+	if (index >= 0)
+		PylonStreamGrabberQueueBuffer(m_hGrabber, m_hBuff[index], (void *) index);
+
 	return ret;
 }
 
@@ -494,7 +518,7 @@ void PylonCam::freeBuffers()
 		}
 	}
 }
-
+/*
 bool PylonCam::allocateBayerBuffers()
 {
 	uint32_t width, height;
@@ -535,7 +559,7 @@ void PylonCam::freeBayerBuffers()
 		m_milWBCoefficients = 0;
 	}
 }
-
+*/
 void PylonCam::adjustSettings()
 {
 	long gainCurrent, gainMin, gainMax;

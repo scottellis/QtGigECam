@@ -3,7 +3,9 @@
 
 #include <QThread>
 #include <QSize>
-#include <Mil.h>
+
+#include <opencv2/highgui/highgui.hpp>
+using namespace cv;
 
 class Camera : protected QThread
 {
@@ -16,7 +18,7 @@ public:
 	virtual bool isOpen() = 0;
 	virtual bool startCapture() { return true; }
 	virtual bool stopCapture() { return true; }
-	virtual bool getNextFrame(MIL_ID buf_id) = 0;
+	virtual bool getNextFrame(Mat *frame) = 0;
 
 	// should be available after open()
 	virtual QSize getImageSize() = 0;
